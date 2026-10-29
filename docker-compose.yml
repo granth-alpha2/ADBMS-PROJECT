@@ -1,0 +1,66 @@
+services:
+  oracle:
+    image: gvenzl/oracle-xe:21-slim-faststart
+    container_name: banksphere-oracle
+    environment:
+      ORACLE_PASSWORD: ${ORACLE_SYSTEM_PASSWORD:?Set ORACLE_SYSTEM_PASSWORD in the root .env file}
+      APP_USER: ${ORACLE_USER:-banksphere_app}
+      APP_USER_PASSWORD: ${ORACLE_PASSWORD:?Set ORACLE_PASSWORD in the root .env file}
+    ports:
+      - "1521:1521"
+      - "5500:5500"
+    volumes:
+      - oracle-data:/opt/oracle/oradata
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'SELECT 1 FROM dual;' | sqlplus -s system/$$ORACLE_PASSWORD@//localhost:1521/XEPDB1 | grep -q 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 20
+      start_period: 90s
+
+  mongo:
+    image: mongo:7
+    container_name: banksphere-mongo
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--auth"]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?Set MONGO_ROOT_USERNAME in the root .env file}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD in the root .env file}
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mongosh --quiet --username \"$$MONGO_INITDB_ROOT_USERNAME\" --password \"$$MONGO_INITDB_ROOT_PASSWORD\" --authenticationDatabase admin --eval 'db.adminCommand({ ping: 1 }).ok'"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 25s
+
+  mongo-init:
+    image: mongo:7
+    container_name: banksphere-mongo-init
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?Set MONGO_ROOT_USERNAME in the root .env file}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?Set MONGO_ROOT_PASSWORD in the root .env file}
+    volumes:
+      - ./database/mongo/init-replica.js:/scripts/init-replica.js:ro
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - >
+        mongosh --host mongo:27017
+        --username "$$MONGO_INITDB_ROOT_USERNAME"
+        --password "$$MONGO_INITDB_ROOT_PASSWORD"
+        --authenticationDatabase admin
+        /scripts/init-replica.js
+    restart: "no"
+
+volumes:
+  oracle-data:
+  mongo-data:

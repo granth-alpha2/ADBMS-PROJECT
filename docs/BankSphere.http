@@ -1,0 +1,155 @@
+@baseUrl = http://localhost:4000/api
+@adminEmail = admin@banksphere.demo
+@adminPassword = ChangeMeAdmin!123
+@accountNo = ACCT001
+@toAccount = ACCT003
+@customerId = C001
+
+### API health
+GET {{baseUrl}}/health
+
+### Sign in as administrator (change the password to match backend/.env)
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{adminEmail}}",
+  "password": "{{adminPassword}}"
+}
+
+### Read Oracle-backed dashboard and balance
+GET {{baseUrl}}/dashboard/{{accountNo}}
+Authorization: Bearer {{login.response.body.data.token}}
+
+###
+GET {{baseUrl}}/accounts/{{accountNo}}/balance
+Authorization: Bearer {{login.response.body.data.token}}
+
+### Deposit, withdraw, and transfer through banking_pkg
+POST {{baseUrl}}/transactions/deposit
+Authorization: Bearer {{login.response.body.data.token}}
+Content-Type: application/json
+
+{
+  "accountNo": "{{accountNo}}",
+  "amount": 500
+}
+
+###
+POST {{baseUrl}}/transactions/withdraw
+Authorization: Bearer {{login.response.body.data.token}}
+Content-Type: application/json
+
+{
+  "accountNo": "{{accountNo}}",
+  "amount": 200
+}
+
+###
+POST {{baseUrl}}/transactions/transfer
+Authorization: Bearer {{login.response.body.data.token}}
+Content-Type: application/json
+
+{
+  "fromAccount": "{{accountNo}}",
+  "toAccount": "{{toAccount}}",
+  "amount": 100
+}
+
+### Search, filter, sort, and paginate MongoDB history
+GET {{baseUrl}}/transactions?accountNo={{accountNo}}&type=WITHDRAW&page=1&limit=10&sortBy=date&sortOrder=desc&search=market
+Authorization: Bearer {{login.response.body.data.token}}
+
+### Read and edit an embedded customer profile
+GET {{baseUrl}}/profiles/{{customerId}}
+Authorization: Bearer {{login.response.body.data.token}}
+
+###
+PATCH {{baseUrl}}/profiles/{{customerId}}
+Authorization: Bearer {{login.response.body.data.token}}
+Content-Type: application/json
+
+{
+  "address": {
+    "city": "Pune",
+    "state": "Maharashtra",
+    "pincode": "411001"
+  },
+  "preferences": {
+    "currency": "INR",
+    "monthly_summary": true
+  }
+}
+
+###
+POST {{baseUrl}}/profiles/{{customerId}}/accounts
+Authorization: Bearer {{login.response.body.data.token}}
+Content-Type: application/json
+
+{
+  "accountNo": "ACCT015"
+}
+
+###
+DELETE {{baseUrl}}/profiles/{{customerId}}/accounts
+Authorization: Bearer {{login.response.body.data.token}}
+Content-Type: application/json
+
+{
+  "accountNo": "ACCT015"
+}
+
+### Aggregation catalog and all six reports
+GET {{baseUrl}}/analytics
+Authorization: Bearer {{login.response.body.data.token}}
+
+###
+GET {{baseUrl}}/analytics/depositsVsWithdrawals
+Authorization: Bearer {{login.response.body.data.token}}
+
+###
+GET {{baseUrl}}/analytics/monthlyTrend
+Authorization: Bearer {{login.response.body.data.token}}
+
+###
+GET {{baseUrl}}/analytics/topCustomers
+Authorization: Bearer {{login.response.body.data.token}}
+
+###
+GET {{baseUrl}}/analytics/spendingByCategory
+Authorization: Bearer {{login.response.body.data.token}}
+
+###
+GET {{baseUrl}}/analytics/customerTransactionJoin
+Authorization: Bearer {{login.response.body.data.token}}
+
+###
+GET {{baseUrl}}/analytics/suspiciousActivity
+Authorization: Bearer {{login.response.body.data.token}}
+
+### Admin audit/activity logs and application user management
+GET {{baseUrl}}/admin/audit-logs?page=1&limit=20
+Authorization: Bearer {{login.response.body.data.token}}
+
+###
+GET {{baseUrl}}/admin/activity-logs?page=1&limit=20
+Authorization: Bearer {{login.response.body.data.token}}
+
+###
+GET {{baseUrl}}/admin/users
+Authorization: Bearer {{login.response.body.data.token}}
+
+###
+# Replace the placeholder user ID with one returned from GET /admin/users.
+PATCH {{baseUrl}}/admin/users/000000000000000000000000
+Authorization: Bearer {{login.response.body.data.token}}
+Content-Type: application/json
+
+{
+  "active": true
+}
+
+### Run the executionStats comparison
+GET {{baseUrl}}/performance
+Authorization: Bearer {{login.response.body.data.token}}
